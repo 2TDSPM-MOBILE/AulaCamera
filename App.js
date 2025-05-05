@@ -8,6 +8,9 @@ import { CameraView,useCameraPermissions } from 'expo-camera';
 //Importando a galeria do aparelho
 import * as MediaLibrary from 'expo-media-library'
 
+//Importando o Sharing(Compartilhameto da foto tirada)
+import * as Sharing from 'expo-sharing';
+
 export default function App() {
   //Estado de permissao da camera
   const[permissaoCam,requestPermissaoCam]=useCameraPermissions()
@@ -21,7 +24,14 @@ export default function App() {
   //Estado para foto capturada
   const[foto,setFoto]=useState(null)
 
+  //Estado para alternar entre as câmeras
   const[isFrontCamera,setIsFrontCamera]=useState(false)
+
+  //Estado para ligar e desativar o flash
+  const[flashLigado,setFlashLigado]=useState(false)
+
+  //Estado para saber se o barcode foi ligo pela camera
+  const[scaneado,setScaneado]=useState(false)
 
   //Pedindo permissão galeria no inicio do app
   useEffect(()=>{
@@ -52,6 +62,18 @@ export default function App() {
       }
     }
   }
+  const compartilharFoto = async () =>{
+    if(foto?.uri && await Sharing.isAvailableAsync()){
+      await Sharing.shareAsync(foto.uri)
+    }else{
+      Alert.alert("Error",'Compartilhamento não disponível')
+    }
+  }
+
+  //Função para alterar o Estado do Flash
+  const alternarFlash = () =>{
+    setFlashLigado(!flashLigado)
+  }
 
   //Enquanto a permissao da camera não foi concedido
   if(!permissaoCam) return <View/>
@@ -71,16 +93,28 @@ export default function App() {
           <CameraView 
             ref={cameraRef}
             style={styles.camera}
-            facing={isFrontCamera?'front':'back'}
+            flash={flashLigado?'on':'off'}
+            facing={isFrontCamera?'front':'back'} 
+            onBarcodeScanned={({type,data})=>{
+              if(!scaneado){
+                setScaneado(true)
+                Alert.alert("Cod Scaneado",`Tipo:${type}\nValor:${data}`)
+              }
+            }}           
           />
           <Button title='Tirar Foto' onPress={tirarFoto}/>
           <Button title='Alternar Camera' onPress={()=>setIsFrontCamera(!isFrontCamera)}/>
+          <Button title={flashLigado?'Desativar Flash':'Ligar Flash'} onPress={alternarFlash}/>
+          {scaneado && (
+            <Button title='Escanear novamente' onPress={()=>setScaneado(false)}/>
+            )}
         </>
       ):(
         <>
           <Image source={{uri:foto.uri}} style={{flex:1}} />
           <Button title='Salvar Foto' onPress={salvarFoto}/>
           <Button title='Tirar outra foto' onPress={()=>setFoto(null)}/>
+          <Button title='Compartilhar Foto' onPress={compartilharFoto}/>  
         </>
       )}
     </View>
